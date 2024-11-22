@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="https://chongchong721.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://chongchong721.github.io/" rel="alternate" type="text/html" /><updated>2024-11-22T17:54:20+00:00</updated><id>https://chongchong721.github.io/feed.xml</id><title type="html">Yuan’s site(MY site)</title><subtitle>Personal website for sharing interesting things</subtitle><entry><title type="html">Filter_reference</title><link href="https://chongchong721.github.io/2024/11/22/filter_reference.html" rel="alternate" type="text/html" title="Filter_reference" /><published>2024-11-22T00:00:00+00:00</published><updated>2024-11-22T00:00:00+00:00</updated><id>https://chongchong721.github.io/2024/11/22/filter_reference</id><content type="html" xml:base="https://chongchong721.github.io/2024/11/22/filter_reference.html"><![CDATA[<h4 id="a-note-on-prefiltered-ggx-environment-map">A Note on Prefiltered GGX Environment Map</h4>
+
+<p>The famous first term of Epic split sum approximation:
+$$
+\frac{1}{N}\sum_{k=1}^N L(l_k)
+$$</p>
+
+<p>They use this form because they are doing importance sampling and then Monte Carlo.</p>
+
+<p>When you importance sampling the lighting direction according to GGX NDF, the actual pdf of this light direction is 
+$$
+pdf(l) = pdf(\omega_m)*\frac{1}{4\cos\langle v,\omega_m \rangle}
+$$
+where $\frac{1}{4cos}$ is the Jacobian from half vector to light/view direction</p>
+
+<p>And, note that, the way to importance sample GGX NDF(<em>not actually GGX NDF</em>) is
+$$
+\theta_m = \arctan{(\frac{\alpha \sqrt{\xi_1}}{\sqrt{1-\xi_1}})}
+$$</p>
+
+<p>$$
+\phi_m = 2\pi \xi_2
+$$</p>
+
+<p>After taking the Jacobian from spherical coordinate to solid angle:$d\omega = \sin{\theta}d\theta d\phi$</p>
+
+<p>We will get:
+$$
+pdf(\omega_m) = D(\omega_m)\langle \omega_m,n \rangle
+$$
+For the above part, refer to https://schuttejoe.github.io/post/ggximportancesamplingpart1/</p>
+
+<p>This means, when you are sampling $\theta$ and $\phi$ using the above formula provided by the original GGX paper, you are actually importance sampling $D(\omega_m)\langle \omega_m,n \rangle$, not $D(\omega_m)$, some literature is not very clear on this.</p>
+
+<p>So, actually we are computing the integral:
+$$
+\int L(l)D(\omega_m)\langle \omega_m,n \rangle \frac{1}{4\cos\langle v,\omega_m \rangle}dl
+$$
+So, if you are doing numerical integration , be sure to directly compute this term and add it up. And don’t forget any Jacobian involved. Or, if you are doing something differently than Epic, be sure to derive a different prefiltering formula.</p>
+
+<p>Then, Epic states that, they’ve found adding another term $\langle l,n \rangle$ can help the result to be better. This is purely added empirically, there is no math behind this. In the end, all of these are just approximations, so probably we should stick to what gives a better result.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[A Note on Prefiltered GGX Environment Map]]></summary></entry><entry><title type="html">MCMC Reflectometry</title><link href="https://chongchong721.github.io/project/2024/08/26/mcmc.html" rel="alternate" type="text/html" title="MCMC Reflectometry" /><published>2024-08-26T23:23:47+00:00</published><updated>2024-08-26T23:23:47+00:00</updated><id>https://chongchong721.github.io/project/2024/08/26/mcmc</id><content type="html" xml:base="https://chongchong721.github.io/project/2024/08/26/mcmc.html"><![CDATA[<h1 id="mcmc-reflectometry">MCMC Reflectometry</h1>
+<h4 id="introduction">Introduction</h4>
+<p>This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.</p>
+
+<p>Like doing importance sampling Monte Carlo in rendering, during material acquisition, we can focus measurements on the part of a real BRDF where its value is high. This will make the acquisition
+process faster, while still providing sufficient information for rendering.</p>
+
+<p>The idea is that Markov chain Monte Carlo theoretically guarantees that we can importance sampling from any distribution as long as we can evaluate the unnormalized version of that distribution. In terms of BRDF, it means being able to evaluate the cosine-weighted BRDF, which is exactly what we want. it will importance sample the real life BRDF and provide us with good samples to use in rendering real-life material.</p>
+
+<h4 id="approaches">Approaches</h4>
+
+<p>The project can be divided into three parts:</p>
+
+<h5 id="acquisition">Acquisition</h5>
+
+<ul>
+  <li>Use a good MCMC proposal to acquire high quality BRDF samples. The proposal is the most important thing since it will make MCMC converge faster, thus providing us with better results.</li>
+  <li>Ideally, we want to let the proposal change adaptively to fit the BRDF.</li>
+</ul>
+
+<h5 id="post-acquisition-interpolation">Post-acquisition interpolation:</h5>
+
+<ul>
+  <li>Because samples from MCMC are not structured, and sparse, a way to interpolate samples is needed so that we can evaluate any $BRDF(\omega_i,\omega_o)$. Once we have the interpolation method, we can use the acquired BRDF in any rendering software.</li>
+</ul>
+
+<h5 id="rendering">Rendering</h5>
+
+<ul>
+  <li>To render the image using the acquired BRDF, we also need to generate a pdf for importance sampling in renderer.</li>
+</ul>
+
+<h4 id="details">Details</h4>
+
+<ul>
+  <li>We have explored several proposals and their respective interpolation method.
+    <ul>
+      <li>Proposals:
+        <ul>
+          <li>Spherical Gaussian</li>
+          <li>a GGX VNDF(visible normal distribution function) as the guidance for importance sampling</li>
+          <li>Primary sample space MCMC which samples $\theta_h,\theta_d,\phi_d$ uniformly</li>
+          <li>Primary sample space MCMC which uses normalizing flows(a kind of neural network that is able to represent any arbitrary pdf) to importance sample $\theta_h,\theta_d,\phi_d$. The flows can be trained during acquisition using the distribution of those already acquired samples.</li>
+        </ul>
+      </li>
+      <li>Interpolation
+        <ul>
+          <li>For the first three method, the only way to do is to perform a Delaunay triangulation on the samples and interpolate the unknown location. The area outside of triangulation is filled by solving a Poisson’s equation.</li>
+          <li>For normalizing flows, a post-acquisition optimization to minimize the error between flows pdf and the ground truth BRDF is performed. And the unknown locations could be expressed using this optimized.</li>
+        </ul>
+      </li>
+      <li>PDF for importance sampling in renderer
+        <ul>
+          <li>For non-normalizing flows method. A GGX roughness $\alpha$ is fitted using all acquired samples and the VNDF of this analytic GGX is used as importance sampling pdf</li>
+          <li>For normalizing flows, since it is a pdf itself, we directly use the pdf.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="results">Results</h4>
+
+<ul>
+  <li>
+    <p>Both the non-adaptive GGX-VNDF, PSS MCMC and the adaptive MCMC method are able to express rough materials well. From top to bottom are rendered images of ground truth, VNDF and PSS-normalizing flows</p>
+
+    <p><img src="/assets/images/mc/gt_ibiza.png" alt="gt_ibiza" /></p>
+
+    <p><img src="/assets/images/mc/pss_ibiza.png" alt="pss_ibiza" /></p>
+
+    <p><img src="/assets/images/mc/nf_ibiza.png" alt="nf_ibiza" /></p>
+  </li>
+  <li>
+    <p>The only adaptive method is the normalizing flows. The normalizing flows shows a better convergence in BRDF integration test and a higher &amp; growing acceptance rate during acquisition experiment. It also generate desired sample distribution.</p>
+
+    <p><img src="/assets/images/mc/convergence.png" alt="convergence" /></p>
+
+    <p><img src="/assets/images/mc/distribution_NF.png" alt="samples" /></p>
+
+    <ul>
+      <li>
+        <p>For glossy material, none of the methods does well. Because of the lack of a good pdf and interpolation method, all non-adaptive have large amount of noises. The normalizing flows perform better in this case. The first image is ground truth and the second image is the normalizing flow BRDF.</p>
+
+        <p><img src="/assets/images/mc/gt_chm.png" alt="gt_chm" /><img src="/assets/images/mc/nf_chm_success.png" alt="nf_chm_success" /></p>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>​</p>
+
+<h4 id="problems">Problems</h4>
+
+<p>There are still two problems for the normalizing flows method:</p>
+
+<ol>
+  <li>Instability:
+    <ul>
+      <li>the optimization and sample generation processes are random, there is a not-low possibility that the optimization will fail and thus we can not use the failed normalizing flows to express BRDF. Also, the normalizing flows is only a pdf.</li>
+      <li>we need to simultaneously compute a constant $c$ during post-acquisition optimization so that we can express the BRDF as $pdf * c$, which makes the optimization more unstable.</li>
+      <li>Some low BRDF samples(in our experiment, $10\%$ of the samples) are still needed to ‘regulate’ the optimization behavior of the part where BRDF is low. Without those samples, the optimization at that part generally fails.</li>
+    </ul>
+  </li>
+  <li>Inaccuracy: For success cases, we have noticeable inaccurate(darker) ring at the edge of the sphere, which means the BRDF at grazing angles is not accurate. Although there are more samples at grazing angles since the BRDF is generally larger there and the MCMC can successfully capture it, we still can not get an accurate result. The part that affects the result the most is the part with low BRDF(the part where $\theta_h$ is relatively large).</li>
+</ol>
+
+<p>Future work to express real-life material BRDF using normalizing flows may need to solve these issues. Also, not like what I would expect ,the acquisition of low BRDF samples is still very important in accurately reconstructing the real-life material.</p>]]></content><author><name></name></author><category term="project" /><summary type="html"><![CDATA[MCMC Reflectometry Introduction This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.]]></summary></entry><entry><title type="html">Welcome to Jekyll!</title><link href="https://chongchong721.github.io/jekyll/update/2024/08/26/welcome-to-jekyll.html" rel="alternate" type="text/html" title="Welcome to Jekyll!" /><published>2024-08-26T23:23:47+00:00</published><updated>2024-08-26T23:23:47+00:00</updated><id>https://chongchong721.github.io/jekyll/update/2024/08/26/welcome-to-jekyll</id><content type="html" xml:base="https://chongchong721.github.io/jekyll/update/2024/08/26/welcome-to-jekyll.html"><![CDATA[<p>You’ll find this post in your <code class="language-plaintext highlighter-rouge">_posts</code> directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run <code class="language-plaintext highlighter-rouge">jekyll serve</code>, which launches a web server and auto-regenerates your site when a file is updated.</p>
+
+<p>Jekyll requires blog post files to be named according to the following format:</p>
+
+<p><code class="language-plaintext highlighter-rouge">YEAR-MONTH-DAY-title.MARKUP</code></p>
+
+<p>Where <code class="language-plaintext highlighter-rouge">YEAR</code> is a four-digit number, <code class="language-plaintext highlighter-rouge">MONTH</code> and <code class="language-plaintext highlighter-rouge">DAY</code> are both two-digit numbers, and <code class="language-plaintext highlighter-rouge">MARKUP</code> is the file extension representing the format used in the file. After that, include the necessary front matter. Take a look at the source for this post to get an idea about how it works.</p>
+
+<p>Jekyll also offers powerful support for code snippets:</p>
+
+<figure class="highlight"><pre><code class="language-ruby" data-lang="ruby"><span class="k">def</span> <span class="nf">print_hi</span><span class="p">(</span><span class="nb">name</span><span class="p">)</span>
+  <span class="nb">puts</span> <span class="s2">"Hi, </span><span class="si">#{</span><span class="nb">name</span><span class="si">}</span><span class="s2">"</span>
+<span class="k">end</span>
+<span class="n">print_hi</span><span class="p">(</span><span class="s1">'Tom'</span><span class="p">)</span>
+<span class="c1">#=&gt; prints 'Hi, Tom' to STDOUT.</span></code></pre></figure>
+
+<p>Check out the <a href="https://jekyllrb.com/docs/home">Jekyll docs</a> for more info on how to get the most out of Jekyll. File all bugs/feature requests at <a href="https://github.com/jekyll/jekyll">Jekyll’s GitHub repo</a>. If you have questions, you can ask them on <a href="https://talk.jekyllrb.com/">Jekyll Talk</a>.</p>]]></content><author><name></name></author><category term="jekyll" /><category term="update" /><summary type="html"><![CDATA[You’ll find this post in your _posts directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run jekyll serve, which launches a web server and auto-regenerates your site when a file is updated.]]></summary></entry><entry><title type="html">A Video Game Is Made!</title><link href="https://chongchong721.github.io/2023/12/31/A-Video-Game-is-Made!.html" rel="alternate" type="text/html" title="A Video Game Is Made!" /><published>2023-12-31T00:00:00+00:00</published><updated>2023-12-31T00:00:00+00:00</updated><id>https://chongchong721.github.io/2023/12/31/A-Video-Game-is-Made!</id><content type="html" xml:base="https://chongchong721.github.io/2023/12/31/A-Video-Game-is-Made!.html"><![CDATA[<h3 id="a-video-game-is-made">A Video Game is Made!</h3>
+
+<p>During this semester’s computer game programming course. Our team has made a great(at least I think it’s great) game!</p>
+
+<p><img src="/assets/image/game/game.png" alt="" /></p>
+
+<p>Please check it out! <a href="https://nelltov.itch.io/tech-wiz">TechWiz</a></p>
+
+<p>The source code is also public! <a href="https://github.com/15466-magitech/magitech">magitech</a></p>
+
+<p>I coded most gameplay stuff and a little bit of shader as well! It was an amazing experience!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[A Video Game is Made!]]></summary></entry></feed>
