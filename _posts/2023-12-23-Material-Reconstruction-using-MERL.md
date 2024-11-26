@@ -2,9 +2,11 @@
 
 ##### BRDF Reconstruction using MERL database
 
+![](/assets/images/cp/alum.png)
+
 - In this project, I have implemented two BRDF reconstruction techniques. One is using PCA to find a few optimal sample directions that could best capture the BRDF[1]. Another one is using two camera direction/light direction pair and extract results from these two 2D images[2].
 - I applied these techniques to some isotropic materials.
--  I've done some analysis and point out the problems and possible improvements.
+- I've done some analysis and point out the problems and possible improvements.
   - Grazing angles
     - This method sometimes ignore the darker color of ground truth
       MERL material at grazing angles.

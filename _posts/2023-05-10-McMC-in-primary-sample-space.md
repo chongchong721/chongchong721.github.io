@@ -1,8 +1,10 @@
 ### Physics-based Rendering Project
 
+![](/assets/images/pbr/drpssmlt.png)
+
 - Markov chain Monte Carlo in primary sample space implementation.
 - in the course project on PBR, I have implemented primary sample space Markov chain Monte Carlo[1] and delayed rejection MLT[2].
-- The [report](/asserts/docs/pbr/Final_project_report.pdf) is here
+- The [report](/assets/docs/pbr/Final_project_report.pdf) is here
 - The full code is not available since it contains course assignment source code which should not be publicly viewed. But part of it is here
   -  [random number generator(sampler) header](/assets/codes/pbr/sampler.h) 
   - [random number generator(sampler) source](/assets/codes/pbr/sampler.cpp)
