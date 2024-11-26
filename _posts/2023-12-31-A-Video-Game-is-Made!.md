@@ -2,7 +2,7 @@
 
 During this semester's computer game programming course. Our team has made a great(at least I think it's great) game! 
 
-![](/assets/image/game/game.png)
+![](/assets/images/game/game.png)
 
 Please check it out! [TechWiz](https://nelltov.itch.io/tech-wiz)
 
