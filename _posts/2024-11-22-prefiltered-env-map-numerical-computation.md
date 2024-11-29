@@ -12,7 +12,7 @@ When you importance sampling the lighting direction according to GGX NDF, the ac
 
 
 $$
-pdf(l) = pdf(\omega_m)*\frac{1}{4\cos\langle v,\omega_m \rangle}
+pdf(l) = pdf(\omega_m)*\frac{1}{4\langle v,\omega_m \rangle}
 $$
 
 
@@ -49,11 +49,14 @@ So, actually we are computing the integral:
 
 
 $$
-\int L(l)D(\omega_m)\langle \omega_m,n \rangle \frac{1}{4\cos\langle v,\omega_m \rangle}dl
+\int L(l)D(\omega_m)\langle \omega_m,n \rangle \frac{1}{4\langle v,\omega_m \rangle}dl
 $$
 
-
 So, if you are doing numerical integration , be sure to directly compute this term and add it up. And don't forget any Jacobian involved. Or, if you are doing something differently than Epic, be sure to derive a different prefiltering formula.
+
+
+
+If you stick to the assumption of $n=v=r$, then the cosine term cancels out
 
 
 
