@@ -8,6 +8,8 @@ categories: project
 #### Introduction
 This project is my master's thesis. It discovers the possibility of acquiring real life material's BRDF adaptively, using Markov chain Monte Carlo. 
 
+**Here is the full version of this [thesis](/assets/docs/thesis/thesis.pdf)**
+
 Like doing importance sampling Monte Carlo in rendering, during material acquisition, we can focus measurements on the part of a real BRDF where its value is high. This will make the acquisition
 process faster, while still providing sufficient information for rendering.
 
