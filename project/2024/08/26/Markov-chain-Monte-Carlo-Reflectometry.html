@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>MCMC Reflectometry | Yuan’s site(MY site)</title>
+<meta name="generator" content="Jekyll v3.10.0">
+<meta property="og:title" content="MCMC Reflectometry">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="MCMC Reflectometry Introduction This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.">
+<meta property="og:description" content="MCMC Reflectometry Introduction This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.">
+<link rel="canonical" href="https://chongchong721.github.io/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry.html">
+<meta property="og:url" content="https://chongchong721.github.io/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry.html">
+<meta property="og:site_name" content="Yuan’s site(MY site)">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2024-08-26T23:23:47+00:00">
+<meta name="twitter:card" content="summary">
+<meta property="twitter:title" content="MCMC Reflectometry">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2024-08-26T23:23:47+00:00","datePublished":"2024-08-26T23:23:47+00:00","description":"MCMC Reflectometry Introduction This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.","headline":"MCMC Reflectometry","mainEntityOfPage":{"@type":"WebPage","@id":"https://chongchong721.github.io/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry.html"},"url":"https://chongchong721.github.io/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css">
+<link type="application/atom+xml" rel="alternate" href="https://chongchong721.github.io/feed.xml" title="Yuan's site(MY site)">
+<script>MathJax={"tex":{"inlineMath":[["$","$"],["\\(","\\)"]],"displayMath":[["$$","$$"],["\\[","\\]"]]},"svg":{"fontCache":"global"}}</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="site-header" role="banner">
+
+  <div class="wrapper">
+<a class="site-title" rel="author" href="/">Yuan's site(MY site)</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger">
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewbox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"></path>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About Myself</a></div>
+      </nav>
+</div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">MCMC Reflectometry</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2024-08-26T23:23:47+00:00" itemprop="datePublished">Aug 26, 2024
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <h1 id="mcmc-reflectometry">MCMC Reflectometry</h1>
+<h4 id="introduction">Introduction</h4>
+<p>This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.</p>
+
+<p><strong>Here is the full version of this <a href="/assets/docs/thesis/thesis.pdf">thesis</a></strong></p>
+
+<p>Like doing importance sampling Monte Carlo in rendering, during material acquisition, we can focus measurements on the part of a real BRDF where its value is high. This will make the acquisition
+process faster, while still providing sufficient information for rendering.</p>
+
+<p>The idea is that Markov chain Monte Carlo theoretically guarantees that we can importance sampling from any distribution as long as we can evaluate the unnormalized version of that distribution. In terms of BRDF, it means being able to evaluate the cosine-weighted BRDF, which is exactly what we want. it will importance sample the real life BRDF and provide us with good samples to use in rendering real-life material.</p>
+
+<h4 id="approaches">Approaches</h4>
+
+<p>The project can be divided into three parts:</p>
+
+<h5 id="acquisition">Acquisition</h5>
+
+<ul>
+  <li>Use a good MCMC proposal to acquire high quality BRDF samples. The proposal is the most important thing since it will make MCMC converge faster, thus providing us with better results.</li>
+  <li>Ideally, we want to let the proposal change adaptively to fit the BRDF.</li>
+</ul>
+
+<h5 id="post-acquisition-interpolation">Post-acquisition interpolation:</h5>
+
+<ul>
+  <li>Because samples from MCMC are not structured, and sparse, a way to interpolate samples is needed so that we can evaluate any $BRDF(\omega_i,\omega_o)$. Once we have the interpolation method, we can use the acquired BRDF in any rendering software.</li>
+</ul>
+
+<h5 id="rendering">Rendering</h5>
+
+<ul>
+  <li>To render the image using the acquired BRDF, we also need to generate a pdf for importance sampling in renderer.</li>
+</ul>
+
+<h4 id="details">Details</h4>
+
+<ul>
+  <li>We have explored several proposals and their respective interpolation method.
+    <ul>
+      <li>Proposals:
+        <ul>
+          <li>Spherical Gaussian</li>
+          <li>a GGX VNDF(visible normal distribution function) as the guidance for importance sampling</li>
+          <li>Primary sample space MCMC which samples $\theta_h,\theta_d,\phi_d$ uniformly</li>
+          <li>Primary sample space MCMC which uses normalizing flows(a kind of neural network that is able to represent any arbitrary pdf) to importance sample $\theta_h,\theta_d,\phi_d$. The flows can be trained during acquisition using the distribution of those already acquired samples.</li>
+        </ul>
+      </li>
+      <li>Interpolation
+        <ul>
+          <li>For the first three method, the only way to do is to perform a Delaunay triangulation on the samples and interpolate the unknown location. The area outside of triangulation is filled by solving a Poisson’s equation.</li>
+          <li>For normalizing flows, a post-acquisition optimization to minimize the error between flows pdf and the ground truth BRDF is performed. And the unknown locations could be expressed using this optimized.</li>
+        </ul>
+      </li>
+      <li>PDF for importance sampling in renderer
+        <ul>
+          <li>For non-normalizing flows method. A GGX roughness $\alpha$ is fitted using all acquired samples and the VNDF of this analytic GGX is used as importance sampling pdf</li>
+          <li>For normalizing flows, since it is a pdf itself, we directly use the pdf.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="results">Results</h4>
+
+<ul>
+  <li>
+    <p>Both the non-adaptive GGX-VNDF, PSS MCMC and the adaptive MCMC method are able to express rough materials well. From top to bottom are rendered images of ground truth, VNDF and PSS-normalizing flows</p>
+
+    <p><img src="/assets/images/mc/gt_ibiza.png" alt="gt_ibiza"></p>
+
+    <p><img src="/assets/images/mc/pss_ibiza.png" alt="pss_ibiza"></p>
+
+    <p><img src="/assets/images/mc/nf_ibiza.png" alt="nf_ibiza"></p>
+  </li>
+  <li>
+    <p>The only adaptive method is the normalizing flows. The normalizing flows shows a better convergence in BRDF integration test and a higher &amp; growing acceptance rate during acquisition experiment. It also generate desired sample distribution.</p>
+
+    <p><img src="/assets/images/mc/convergence.png" alt="convergence"></p>
+
+    <p><img src="/assets/images/mc/distribution_NF.png" alt="samples"></p>
+
+    <ul>
+      <li>
+        <p>For glossy material, none of the methods does well. Because of the lack of a good pdf and interpolation method, all non-adaptive have large amount of noises. The normalizing flows perform better in this case. The first image is ground truth and the second image is the normalizing flow BRDF.</p>
+
+        <p><img src="/assets/images/mc/gt_chm.png" alt="gt_chm"><img src="/assets/images/mc/nf_chm_success.png" alt="nf_chm_success"></p>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>​</p>
+
+<h4 id="problems">Problems</h4>
+
+<p>There are still two problems for the normalizing flows method:</p>
+
+<ol>
+  <li>Instability:
+    <ul>
+      <li>the optimization and sample generation processes are random, there is a not-low possibility that the optimization will fail and thus we can not use the failed normalizing flows to express BRDF. Also, the normalizing flows is only a pdf.</li>
+      <li>we need to simultaneously compute a constant $c$ during post-acquisition optimization so that we can express the BRDF as $pdf * c$, which makes the optimization more unstable.</li>
+      <li>Some low BRDF samples(in our experiment, $10\%$ of the samples) are still needed to ‘regulate’ the optimization behavior of the part where BRDF is low. Without those samples, the optimization at that part generally fails.</li>
+    </ul>
+  </li>
+  <li>Inaccuracy: For success cases, we have noticeable inaccurate(darker) ring at the edge of the sphere, which means the BRDF at grazing angles is not accurate. Although there are more samples at grazing angles since the BRDF is generally larger there and the MCMC can successfully capture it, we still can not get an accurate result. The part that affects the result the most is the part with low BRDF(the part where $\theta_h$ is relatively large).</li>
+</ol>
+
+<p>Future work to express real-life material BRDF using normalizing flows may need to solve these issues. Also, not like what I would expect ,the acquisition of low BRDF samples is still very important in accurately reconstructing the real-life material.</p>
+
+  </div>
+<a class="u-url" href="/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Yuan's site(MY site)</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Yuan's site(MY site)</li>
+<li><a class="u-email" href="mailto:fbzq125689@gmail.com">fbzq125689@gmail.com</a></li>
+</ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+<ul class="social-media-list"><li><a href="https://github.com/chongchong721"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">chongchong721</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Personal website for sharing interesting things</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

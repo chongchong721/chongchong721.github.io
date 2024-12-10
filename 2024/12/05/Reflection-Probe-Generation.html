@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Reflection Probe Generation | Yuan’s site(MY site)</title>
+<meta name="generator" content="Jekyll v3.10.0">
+<meta property="og:title" content="Reflection Probe Generation">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="The project is based on the paper ‘Fast Filtering of Reflection Probe’">
+<meta property="og:description" content="The project is based on the paper ‘Fast Filtering of Reflection Probe’">
+<link rel="canonical" href="https://chongchong721.github.io/2024/12/05/Reflection-Probe-Generation.html">
+<meta property="og:url" content="https://chongchong721.github.io/2024/12/05/Reflection-Probe-Generation.html">
+<meta property="og:site_name" content="Yuan’s site(MY site)">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2024-12-05T00:00:00+00:00">
+<meta name="twitter:card" content="summary">
+<meta property="twitter:title" content="Reflection Probe Generation">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2024-12-05T00:00:00+00:00","datePublished":"2024-12-05T00:00:00+00:00","description":"The project is based on the paper ‘Fast Filtering of Reflection Probe’","headline":"Reflection Probe Generation","mainEntityOfPage":{"@type":"WebPage","@id":"https://chongchong721.github.io/2024/12/05/Reflection-Probe-Generation.html"},"url":"https://chongchong721.github.io/2024/12/05/Reflection-Probe-Generation.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="stylesheet" href="/assets/main.css">
+<link type="application/atom+xml" rel="alternate" href="https://chongchong721.github.io/feed.xml" title="Yuan's site(MY site)">
+<script>MathJax={"tex":{"inlineMath":[["$","$"],["\\(","\\)"]],"displayMath":[["$$","$$"],["\\[","\\]"]]},"svg":{"fontCache":"global"}}</script><script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<header class="site-header" role="banner">
+
+  <div class="wrapper">
+<a class="site-title" rel="author" href="/">Yuan's site(MY site)</a><nav class="site-nav">
+        <input type="checkbox" id="nav-trigger" class="nav-trigger">
+        <label for="nav-trigger">
+          <span class="menu-icon">
+            <svg viewbox="0 0 18 15" width="18px" height="15px">
+              <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"></path>
+            </svg>
+          </span>
+        </label>
+
+        <div class="trigger"><a class="page-link" href="/about/">About Myself</a></div>
+      </nav>
+</div>
+</header>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title p-name" itemprop="name headline">Reflection Probe Generation</h1>
+    <p class="post-meta">
+      <time class="dt-published" datetime="2024-12-05T00:00:00+00:00" itemprop="datePublished">Dec 5, 2024
+      </time></p>
+  </header>
+
+  <div class="post-content e-content" itemprop="articleBody">
+    <p>The project is based on the paper ‘Fast Filtering of Reflection Probe’</p>
+
+<p>The idea is simple: When filtering the environment map using a distribution of normals(<em>NDF</em>) kernel, which is</p>
+
+<p>$$
+\int_\Omega L(l)D(h)dl
+$$
+it is possible to find optimal directions rather than using Monte Carlo importance sampling, so that, given same amount of sample budgets(or same amount of execution time budget), the filtered result will be closer to the ground truth result computed by numerical integration.</p>
+
+<p>The optimization process is try to find $N$ samples that could best reconstruct a specific GGX NDF kernel on a cubemap. And the optimization should be run on many normal directions on a cubemap.</p>
+
+<p>The original paper proposed the way to do this for GGX material in radial symmetric case($n=v$), using a pre-optimized polynomial coefficient table to compute those directions. This project aims at</p>
+
+<ul>
+  <li>Re-implement the optimization pipeline, which is not published.</li>
+  <li>Extend this to view-dependent case(i.e. without the assumption of $n=v$)</li>
+  <li>Extend this to other real-life materials.</li>
+</ul>
+
+<h4 id="constraints">Constraints</h4>
+
+<ul>
+  <li>Given this application is in real-time graphics context, the direction computation must not take a lot of time(e.g. we can not put things into a neural network and wait for the output?). This might depend on the use case. If the environment map update is not so frequent, and one can tolerate the trade off between accuracy and time, a more complex fitting function can be used.</li>
+  <li>The radial symmetry assumption of the split sum approximation reduce the problem dimension. While this assumption is OK for many usecase(if it is a sphere), it can not reproduce the stretched, anisotropic visual effect.</li>
+</ul>
+
+<h4 id="current-results">Current Results</h4>
+
+<p><em>This post has no images at this time/code(<a href="https://github.com/chongchong721/ggx_filtering">Github Repo</a> ) is not tidy</em>.</p>
+
+<h5 id="reimplementation">Reimplementation</h5>
+
+<ul>
+  <li>There seems to be some coding bugs in the reference HLSL code provided by the original author. It is related to a Jacobian. The code uses the inverse of it while the paper says otherwise.</li>
+  <li>An optimization pipeline using Pytorch(Adam/L-BFGS) is implemented. It supports generating coefficient table for any GGX roughness. Though it is written in Python, with CUDA support it runs pretty fast.</li>
+</ul>
+
+<h5 id="view-dependent-case">View-dependent case</h5>
+
+<ul>
+  <li>Adding view-dependent case introduces a lot of trouble
+    <ul>
+      <li>More parameters
+        <ul>
+          <li>Given the material is isotropic, we can focus only on $\theta_h$, however, due to we are operating on a cubemap, not a sphere, the distortion may require more complex parameterization.</li>
+        </ul>
+      </li>
+      <li>Invalid samples that are below horizon
+        <ul>
+          <li>If we treat $\theta_h$ as a variable in the polynomial. For cases where $\theta_h$ is are close to grazing angles, we might have a lot of samples that are below the horizon. Eventually, grazing angles are the part that we want to make it better so this is not acceptable.
+            <ul>
+              <li>Adding a regularization term of $ReLU(-\langle n,l \rangle)$ during the optimization will make most samples valid. However, this introduces visible bias. In a filtered map, it looks like the map is rotated. For other cases that do not require clipping the horizon, the sample distribution is regularized to the same shape as grazing angles(imaging half of the GGX kernel is clipped in an extreme case)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li>Different shapes of GGX kernel for different $\theta_h$
+        <ul>
+          <li>The shape difference of a GGX kernel at grazing angles and not at grazing angles is huge. It seems like the polynomial fitting method can not capture them at the same time</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>How this might be solved
+    <ul>
+      <li>Optimize different coefficient tables for different $\theta_h$, when there is a $\theta_h$ in between, we interpolate.</li>
+    </ul>
+  </li>
+</ul>
+
+<h5 id="other-materials">Other Materials</h5>
+
+<ul>
+  <li>The original method is effective in isotropic radial symmetric case. For other isotropic materials, we will need the NDF to do this, since all the theory of split sum approximation is based on microfacet theory,</li>
+  <li>There is existing way to extract tabulated NDF from retro-reflective measurements. I already re-implemented this. We can test it on some MERL materials.</li>
+</ul>
+
+  </div>
+<a class="u-url" href="/2024/12/05/Reflection-Probe-Generation.html" hidden></a>
+</article>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/"></data>
+
+  <div class="wrapper">
+
+    <h2 class="footer-heading">Yuan's site(MY site)</h2>
+
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1">
+        <ul class="contact-list">
+          <li class="p-name">Yuan's site(MY site)</li>
+<li><a class="u-email" href="mailto:fbzq125689@gmail.com">fbzq125689@gmail.com</a></li>
+</ul>
+      </div>
+
+      <div class="footer-col footer-col-2">
+<ul class="social-media-list"><li><a href="https://github.com/chongchong721"><svg class="svg-icon"><use xlink:href="/assets/minima-social-icons.svg#github"></use></svg> <span class="username">chongchong721</span></a></li></ul>
+</div>
+
+      <div class="footer-col footer-col-3">
+        <p>Personal website for sharing interesting things</p>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+</body>
+
+</html>

@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.10.0">Jekyll</generator><link href="https://chongchong721.github.io/feed.xml" rel="self" type="application/atom+xml" /><link href="https://chongchong721.github.io/" rel="alternate" type="text/html" /><updated>2024-12-10T04:17:56+00:00</updated><id>https://chongchong721.github.io/feed.xml</id><title type="html">Yuan’s site(MY site)</title><subtitle>Personal website for sharing interesting things</subtitle><entry><title type="html">Reflection Probe Generation</title><link href="https://chongchong721.github.io/2024/12/05/Reflection-Probe-Generation.html" rel="alternate" type="text/html" title="Reflection Probe Generation" /><published>2024-12-05T00:00:00+00:00</published><updated>2024-12-05T00:00:00+00:00</updated><id>https://chongchong721.github.io/2024/12/05/Reflection-Probe-Generation</id><content type="html" xml:base="https://chongchong721.github.io/2024/12/05/Reflection-Probe-Generation.html"><![CDATA[<p>The project is based on the paper ‘Fast Filtering of Reflection Probe’</p>
+
+<p>The idea is simple: When filtering the environment map using a distribution of normals(<em>NDF</em>) kernel, which is</p>
+
+<p>$$
+\int_\Omega L(l)D(h)dl
+$$
+it is possible to find optimal directions rather than using Monte Carlo importance sampling, so that, given same amount of sample budgets(or same amount of execution time budget), the filtered result will be closer to the ground truth result computed by numerical integration.</p>
+
+<p>The optimization process is try to find $N$ samples that could best reconstruct a specific GGX NDF kernel on a cubemap. And the optimization should be run on many normal directions on a cubemap.</p>
+
+<p>The original paper proposed the way to do this for GGX material in radial symmetric case($n=v$), using a pre-optimized polynomial coefficient table to compute those directions. This project aims at</p>
+
+<ul>
+  <li>Re-implement the optimization pipeline, which is not published.</li>
+  <li>Extend this to view-dependent case(i.e. without the assumption of $n=v$)</li>
+  <li>Extend this to other real-life materials.</li>
+</ul>
+
+<h4 id="constraints">Constraints</h4>
+
+<ul>
+  <li>Given this application is in real-time graphics context, the direction computation must not take a lot of time(e.g. we can not put things into a neural network and wait for the output?). This might depend on the use case. If the environment map update is not so frequent, and one can tolerate the trade off between accuracy and time, a more complex fitting function can be used.</li>
+  <li>The radial symmetry assumption of the split sum approximation reduce the problem dimension. While this assumption is OK for many usecase(if it is a sphere), it can not reproduce the stretched, anisotropic visual effect.</li>
+</ul>
+
+<h4 id="current-results">Current Results</h4>
+
+<p><em>This post has no images at this time/code(<a href="https://github.com/chongchong721/ggx_filtering">Github Repo</a> ) is not tidy</em>.</p>
+
+<h5 id="reimplementation">Reimplementation</h5>
+
+<ul>
+  <li>There seems to be some coding bugs in the reference HLSL code provided by the original author. It is related to a Jacobian. The code uses the inverse of it while the paper says otherwise.</li>
+  <li>An optimization pipeline using Pytorch(Adam/L-BFGS) is implemented. It supports generating coefficient table for any GGX roughness. Though it is written in Python, with CUDA support it runs pretty fast.</li>
+</ul>
+
+<h5 id="view-dependent-case">View-dependent case</h5>
+
+<ul>
+  <li>Adding view-dependent case introduces a lot of trouble
+    <ul>
+      <li>More parameters
+        <ul>
+          <li>Given the material is isotropic, we can focus only on $\theta_h$, however, due to we are operating on a cubemap, not a sphere, the distortion may require more complex parameterization.</li>
+        </ul>
+      </li>
+      <li>Invalid samples that are below horizon
+        <ul>
+          <li>If we treat $\theta_h$ as a variable in the polynomial. For cases where $\theta_h$ is are close to grazing angles, we might have a lot of samples that are below the horizon. Eventually, grazing angles are the part that we want to make it better so this is not acceptable.
+            <ul>
+              <li>Adding a regularization term of $ReLU(-\langle n,l \rangle)$ during the optimization will make most samples valid. However, this introduces visible bias. In a filtered map, it looks like the map is rotated. For other cases that do not require clipping the horizon, the sample distribution is regularized to the same shape as grazing angles(imaging half of the GGX kernel is clipped in an extreme case)</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li>Different shapes of GGX kernel for different $\theta_h$
+        <ul>
+          <li>The shape difference of a GGX kernel at grazing angles and not at grazing angles is huge. It seems like the polynomial fitting method can not capture them at the same time</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>How this might be solved
+    <ul>
+      <li>Optimize different coefficient tables for different $\theta_h$, when there is a $\theta_h$ in between, we interpolate.</li>
+    </ul>
+  </li>
+</ul>
+
+<h5 id="other-materials">Other Materials</h5>
+
+<ul>
+  <li>The original method is effective in isotropic radial symmetric case. For other isotropic materials, we will need the NDF to do this, since all the theory of split sum approximation is based on microfacet theory,</li>
+  <li>There is existing way to extract tabulated NDF from retro-reflective measurements. I already re-implemented this. We can test it on some MERL materials.</li>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[The project is based on the paper ‘Fast Filtering of Reflection Probe’]]></summary></entry><entry><title type="html">Prefiltered Env Map Numerical Computation</title><link href="https://chongchong721.github.io/2024/11/22/prefiltered-env-map-numerical-computation.html" rel="alternate" type="text/html" title="Prefiltered Env Map Numerical Computation" /><published>2024-11-22T00:00:00+00:00</published><updated>2024-11-22T00:00:00+00:00</updated><id>https://chongchong721.github.io/2024/11/22/prefiltered-env-map-numerical-computation</id><content type="html" xml:base="https://chongchong721.github.io/2024/11/22/prefiltered-env-map-numerical-computation.html"><![CDATA[<h4 id="a-note-on-prefiltered-ggx-environment-map">A Note on Prefiltered GGX Environment Map</h4>
+
+<p>The famous first term of Epic split sum approximation:
+$$
+\frac{1}{N}\sum_{k=1}^N L(l_k)
+$$</p>
+
+<p>They use this form because they are doing importance sampling and then Monte Carlo.</p>
+
+<p>When you importance sampling the lighting direction according to GGX NDF, the actual pdf of this light direction is</p>
+
+<p>$$
+pdf(l) = pdf(\omega_m)*\frac{1}{4\langle v,\omega_m \rangle}
+$$</p>
+
+<p>where $\frac{1}{4cos}$ is the Jacobian from half vector to light/view direction</p>
+
+<p>And, note that, the way to importance sample GGX NDF(<em>not actually GGX NDF</em>) is</p>
+
+<p>$$
+\theta_m = \arctan{(\frac{\alpha \sqrt{\xi_1}}{\sqrt{1-\xi_1}})}
+$$</p>
+
+<p>$$
+\phi_m = 2\pi \xi_2
+$$</p>
+
+<p>After taking the Jacobian from spherical coordinate to solid angle:$d\omega = \sin{\theta}d\theta d\phi$</p>
+
+<p>We will get:</p>
+
+<p>$$
+pdf(\omega_m) = D(\omega_m)\langle \omega_m,n \rangle
+$$</p>
+
+<p>For the above part, refer to https://schuttejoe.github.io/post/ggximportancesamplingpart1/</p>
+
+<p>This means, when you are sampling $\theta$ and $\phi$ using the above formula provided by the original GGX paper, you are actually importance sampling $D(\omega_m)\langle \omega_m,n \rangle$, not $D(\omega_m)$, some literature is not very clear on this.</p>
+
+<p>So, actually we are computing the integral:</p>
+
+<p>$$
+\int L(l)D(\omega_m)\langle \omega_m,n \rangle \frac{1}{4\langle v,\omega_m \rangle}dl
+$$</p>
+
+<p>So, if you are doing numerical integration , be sure to directly compute this term and add it up. And don’t forget any Jacobian involved. Or, if you are doing something differently than Epic, be sure to derive a different prefiltering formula.</p>
+
+<p>If you stick to the assumption of $n=v=r$, then the cosine term cancels out</p>
+
+<p>Then, Epic states that, they’ve found adding another term $\langle l,n \rangle$ can help the result to be better. This is purely added empirically, there is no math behind this. In the end, all of these are just approximations, so probably we should stick to what gives a better result.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[A Note on Prefiltered GGX Environment Map]]></summary></entry><entry><title type="html">Downsample Mipmap</title><link href="https://chongchong721.github.io/2024/10/10/Downsample-mipmap.html" rel="alternate" type="text/html" title="Downsample Mipmap" /><published>2024-10-10T00:00:00+00:00</published><updated>2024-10-10T00:00:00+00:00</updated><id>https://chongchong721.github.io/2024/10/10/Downsample-mipmap</id><content type="html" xml:base="https://chongchong721.github.io/2024/10/10/Downsample-mipmap.html"><![CDATA[<h3 id="downsample-a-cubemap-mipmap">Downsample A Cubemap Mipmap</h3>
+
+<p>In the Activision paper of fast filtering of GGX reflection probe, the author proposed a smoother downsample routine. However, it seems like the code the author provided is not doing what they discussed in their paper.</p>
+
+<p>A B-spline kernel is used for downsampling. And Jacobian terms are used to account for the distortion from cubemap to sphere mapping</p>
+
+<blockquote>
+  <p>Quadratic b-splines are smooth, but the projection of a constant function over a sphere onto a cubemap is not smooth between faces. To get a basis that better approximates a constant over a sphere, we weight each of the samples in the b-spline recurrence by the Jacobian, J(x, y, z). Weighting samples by the Jacobian has the desired effect of giving less weight to corners and edges, and produces functions that are smooth everywhere except for at edges.</p>
+</blockquote>
+
+<p>This means, for a value $v$ at a cubemap location $(x,y,z)$, we weight it by
+$$
+v * \frac{1}{(x^2 + y^2 + z^2)^{\frac{3}{2}}}
+$$
+By doing this, less weight is given to the locations near corners and edges.</p>
+
+<p>However, the code seems to be doing the contrary:</p>
+
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">float</span> <span class="nf">calcWeight</span><span class="p">(</span> <span class="kt">float</span> <span class="n">u</span><span class="p">,</span> <span class="kt">float</span> <span class="n">v</span> <span class="p">)</span>
+<span class="p">{</span>
+	<span class="kt">float</span> <span class="n">val</span> <span class="o">=</span> <span class="n">u</span><span class="o">*</span><span class="n">u</span> <span class="o">+</span> <span class="n">v</span><span class="o">*</span><span class="n">v</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+	<span class="k">return</span> <span class="n">val</span><span class="o">*</span><span class="n">sqrt</span><span class="p">(</span> <span class="n">val</span> <span class="p">);</span>
+<span class="p">}</span>
+<span class="kt">float</span> <span class="n">weights</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span>
+<span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">calcWeight</span><span class="p">(</span> <span class="n">u0</span><span class="p">,</span> <span class="n">v0</span> <span class="p">);</span>
+<span class="n">weights</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">calcWeight</span><span class="p">(</span> <span class="n">u1</span><span class="p">,</span> <span class="n">v0</span> <span class="p">);</span>
+<span class="n">weights</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">calcWeight</span><span class="p">(</span> <span class="n">u0</span><span class="p">,</span> <span class="n">v1</span> <span class="p">);</span>
+<span class="n">weights</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">calcWeight</span><span class="p">(</span> <span class="n">u1</span><span class="p">,</span> <span class="n">v1</span> <span class="p">);</span>
+
+<span class="k">const</span> <span class="kt">float</span> <span class="n">wsum</span> <span class="o">=</span> <span class="mf">0.5</span><span class="n">f</span> <span class="o">/</span> <span class="p">(</span> <span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">weights</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">weights</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">weights</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="p">);</span>
+<span class="p">[</span><span class="n">unroll</span><span class="p">]</span>
+<span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span> <span class="p">)</span>
+    <span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">weights</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">wsum</span> <span class="o">+</span> <span class="mf">.125</span><span class="n">f</span><span class="p">;</span>
+
+<span class="n">get_dir_0</span><span class="p">(</span> <span class="n">dir</span><span class="p">,</span> <span class="n">u0</span><span class="p">,</span> <span class="n">v0</span> <span class="p">);</span>
+<span class="n">color</span> <span class="o">=</span> <span class="n">tex_hi_res</span><span class="p">.</span><span class="n">SampleLevel</span><span class="p">(</span> <span class="n">bilinear</span><span class="p">,</span> <span class="n">dir</span><span class="p">,</span> <span class="mi">0</span> <span class="p">)</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+
+<span class="n">get_dir_0</span><span class="p">(</span> <span class="n">dir</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">v0</span> <span class="p">);</span>
+<span class="n">color</span> <span class="o">+=</span> <span class="n">tex_hi_res</span><span class="p">.</span><span class="n">SampleLevel</span><span class="p">(</span> <span class="n">bilinear</span><span class="p">,</span> <span class="n">dir</span><span class="p">,</span> <span class="mi">0</span> <span class="p">)</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+
+<span class="n">get_dir_0</span><span class="p">(</span> <span class="n">dir</span><span class="p">,</span> <span class="n">u0</span><span class="p">,</span> <span class="n">v1</span> <span class="p">);</span>
+<span class="n">color</span> <span class="o">+=</span> <span class="n">tex_hi_res</span><span class="p">.</span><span class="n">SampleLevel</span><span class="p">(</span> <span class="n">bilinear</span><span class="p">,</span> <span class="n">dir</span><span class="p">,</span> <span class="mi">0</span> <span class="p">)</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+
+<span class="n">get_dir_0</span><span class="p">(</span> <span class="n">dir</span><span class="p">,</span> <span class="n">u1</span><span class="p">,</span> <span class="n">v1</span> <span class="p">);</span>
+<span class="n">color</span> <span class="o">+=</span> <span class="n">tex_hi_res</span><span class="p">.</span><span class="n">SampleLevel</span><span class="p">(</span> <span class="n">bilinear</span><span class="p">,</span> <span class="n">dir</span><span class="p">,</span> <span class="mi">0</span> <span class="p">)</span> <span class="o">*</span> <span class="n">weights</span><span class="p">[</span><span class="mi">3</span><span class="p">];</span>
+<span class="k">break</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>So, this is weighting it by $\frac{1}{J(x,y,z)}$, it gives larger weight at corners and edges.</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Downsample A Cubemap Mipmap]]></summary></entry><entry><title type="html">MCMC Reflectometry</title><link href="https://chongchong721.github.io/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry.html" rel="alternate" type="text/html" title="MCMC Reflectometry" /><published>2024-08-26T23:23:47+00:00</published><updated>2024-08-26T23:23:47+00:00</updated><id>https://chongchong721.github.io/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry</id><content type="html" xml:base="https://chongchong721.github.io/project/2024/08/26/Markov-chain-Monte-Carlo-Reflectometry.html"><![CDATA[<h1 id="mcmc-reflectometry">MCMC Reflectometry</h1>
+<h4 id="introduction">Introduction</h4>
+<p>This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.</p>
+
+<p><strong>Here is the full version of this <a href="/assets/docs/thesis/thesis.pdf">thesis</a></strong></p>
+
+<p>Like doing importance sampling Monte Carlo in rendering, during material acquisition, we can focus measurements on the part of a real BRDF where its value is high. This will make the acquisition
+process faster, while still providing sufficient information for rendering.</p>
+
+<p>The idea is that Markov chain Monte Carlo theoretically guarantees that we can importance sampling from any distribution as long as we can evaluate the unnormalized version of that distribution. In terms of BRDF, it means being able to evaluate the cosine-weighted BRDF, which is exactly what we want. it will importance sample the real life BRDF and provide us with good samples to use in rendering real-life material.</p>
+
+<h4 id="approaches">Approaches</h4>
+
+<p>The project can be divided into three parts:</p>
+
+<h5 id="acquisition">Acquisition</h5>
+
+<ul>
+  <li>Use a good MCMC proposal to acquire high quality BRDF samples. The proposal is the most important thing since it will make MCMC converge faster, thus providing us with better results.</li>
+  <li>Ideally, we want to let the proposal change adaptively to fit the BRDF.</li>
+</ul>
+
+<h5 id="post-acquisition-interpolation">Post-acquisition interpolation:</h5>
+
+<ul>
+  <li>Because samples from MCMC are not structured, and sparse, a way to interpolate samples is needed so that we can evaluate any $BRDF(\omega_i,\omega_o)$. Once we have the interpolation method, we can use the acquired BRDF in any rendering software.</li>
+</ul>
+
+<h5 id="rendering">Rendering</h5>
+
+<ul>
+  <li>To render the image using the acquired BRDF, we also need to generate a pdf for importance sampling in renderer.</li>
+</ul>
+
+<h4 id="details">Details</h4>
+
+<ul>
+  <li>We have explored several proposals and their respective interpolation method.
+    <ul>
+      <li>Proposals:
+        <ul>
+          <li>Spherical Gaussian</li>
+          <li>a GGX VNDF(visible normal distribution function) as the guidance for importance sampling</li>
+          <li>Primary sample space MCMC which samples $\theta_h,\theta_d,\phi_d$ uniformly</li>
+          <li>Primary sample space MCMC which uses normalizing flows(a kind of neural network that is able to represent any arbitrary pdf) to importance sample $\theta_h,\theta_d,\phi_d$. The flows can be trained during acquisition using the distribution of those already acquired samples.</li>
+        </ul>
+      </li>
+      <li>Interpolation
+        <ul>
+          <li>For the first three method, the only way to do is to perform a Delaunay triangulation on the samples and interpolate the unknown location. The area outside of triangulation is filled by solving a Poisson’s equation.</li>
+          <li>For normalizing flows, a post-acquisition optimization to minimize the error between flows pdf and the ground truth BRDF is performed. And the unknown locations could be expressed using this optimized.</li>
+        </ul>
+      </li>
+      <li>PDF for importance sampling in renderer
+        <ul>
+          <li>For non-normalizing flows method. A GGX roughness $\alpha$ is fitted using all acquired samples and the VNDF of this analytic GGX is used as importance sampling pdf</li>
+          <li>For normalizing flows, since it is a pdf itself, we directly use the pdf.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="results">Results</h4>
+
+<ul>
+  <li>
+    <p>Both the non-adaptive GGX-VNDF, PSS MCMC and the adaptive MCMC method are able to express rough materials well. From top to bottom are rendered images of ground truth, VNDF and PSS-normalizing flows</p>
+
+    <p><img src="/assets/images/mc/gt_ibiza.png" alt="gt_ibiza" /></p>
+
+    <p><img src="/assets/images/mc/pss_ibiza.png" alt="pss_ibiza" /></p>
+
+    <p><img src="/assets/images/mc/nf_ibiza.png" alt="nf_ibiza" /></p>
+  </li>
+  <li>
+    <p>The only adaptive method is the normalizing flows. The normalizing flows shows a better convergence in BRDF integration test and a higher &amp; growing acceptance rate during acquisition experiment. It also generate desired sample distribution.</p>
+
+    <p><img src="/assets/images/mc/convergence.png" alt="convergence" /></p>
+
+    <p><img src="/assets/images/mc/distribution_NF.png" alt="samples" /></p>
+
+    <ul>
+      <li>
+        <p>For glossy material, none of the methods does well. Because of the lack of a good pdf and interpolation method, all non-adaptive have large amount of noises. The normalizing flows perform better in this case. The first image is ground truth and the second image is the normalizing flow BRDF.</p>
+
+        <p><img src="/assets/images/mc/gt_chm.png" alt="gt_chm" /><img src="/assets/images/mc/nf_chm_success.png" alt="nf_chm_success" /></p>
+      </li>
+    </ul>
+  </li>
+</ul>
+
+<p>​</p>
+
+<h4 id="problems">Problems</h4>
+
+<p>There are still two problems for the normalizing flows method:</p>
+
+<ol>
+  <li>Instability:
+    <ul>
+      <li>the optimization and sample generation processes are random, there is a not-low possibility that the optimization will fail and thus we can not use the failed normalizing flows to express BRDF. Also, the normalizing flows is only a pdf.</li>
+      <li>we need to simultaneously compute a constant $c$ during post-acquisition optimization so that we can express the BRDF as $pdf * c$, which makes the optimization more unstable.</li>
+      <li>Some low BRDF samples(in our experiment, $10\%$ of the samples) are still needed to ‘regulate’ the optimization behavior of the part where BRDF is low. Without those samples, the optimization at that part generally fails.</li>
+    </ul>
+  </li>
+  <li>Inaccuracy: For success cases, we have noticeable inaccurate(darker) ring at the edge of the sphere, which means the BRDF at grazing angles is not accurate. Although there are more samples at grazing angles since the BRDF is generally larger there and the MCMC can successfully capture it, we still can not get an accurate result. The part that affects the result the most is the part with low BRDF(the part where $\theta_h$ is relatively large).</li>
+</ol>
+
+<p>Future work to express real-life material BRDF using normalizing flows may need to solve these issues. Also, not like what I would expect ,the acquisition of low BRDF samples is still very important in accurately reconstructing the real-life material.</p>]]></content><author><name></name></author><category term="project" /><summary type="html"><![CDATA[MCMC Reflectometry Introduction This project is my master’s thesis. It discovers the possibility of acquiring real life material’s BRDF adaptively, using Markov chain Monte Carlo.]]></summary></entry><entry><title type="html">A Video Game Is Made!</title><link href="https://chongchong721.github.io/2023/12/31/A-Video-Game-is-Made!.html" rel="alternate" type="text/html" title="A Video Game Is Made!" /><published>2023-12-31T00:00:00+00:00</published><updated>2023-12-31T00:00:00+00:00</updated><id>https://chongchong721.github.io/2023/12/31/A-Video-Game-is-Made!</id><content type="html" xml:base="https://chongchong721.github.io/2023/12/31/A-Video-Game-is-Made!.html"><![CDATA[<h3 id="a-video-game-is-made">A Video Game is Made!</h3>
+
+<p>During this semester’s computer game programming course. Our team has made a great(at least I think it’s great) game!</p>
+
+<p><img src="/assets/images/game/game.png" alt="" /></p>
+
+<p>Please check it out! <a href="https://nelltov.itch.io/tech-wiz">TechWiz</a></p>
+
+<p>The source code is also public! <a href="https://github.com/15466-magitech/magitech">magitech</a></p>
+
+<p>I coded most gameplay stuff and a little bit of shader as well! It was an amazing experience!</p>]]></content><author><name></name></author><summary type="html"><![CDATA[A Video Game is Made!]]></summary></entry><entry><title type="html">Material Reconstruction Using Merl</title><link href="https://chongchong721.github.io/2023/12/23/Material-Reconstruction-using-MERL.html" rel="alternate" type="text/html" title="Material Reconstruction Using Merl" /><published>2023-12-23T00:00:00+00:00</published><updated>2023-12-23T00:00:00+00:00</updated><id>https://chongchong721.github.io/2023/12/23/Material-Reconstruction-using-MERL</id><content type="html" xml:base="https://chongchong721.github.io/2023/12/23/Material-Reconstruction-using-MERL.html"><![CDATA[<h3 id="computational-photography-final-project">Computational Photography Final Project</h3>
+
+<h5 id="brdf-reconstruction-using-merl-database">BRDF Reconstruction using MERL database</h5>
+
+<p><img src="/assets/images/cp/alum.png" alt="" /></p>
+
+<ul>
+  <li>In this project, I have implemented two BRDF reconstruction techniques. One is using PCA to find a few optimal sample directions that could best capture the BRDF[1]. Another one is using two camera direction/light direction pair and extract results from these two 2D images[2].</li>
+  <li>I applied these techniques to some isotropic materials.</li>
+  <li>I’ve done some analysis and point out the problems and possible improvements.
+    <ul>
+      <li>Grazing angles
+        <ul>
+          <li>This method sometimes ignore the darker color of ground truth
+MERL material at grazing angles.</li>
+        </ul>
+      </li>
+      <li>A faster but better error metric
+        <ul>
+          <li>In optimizing the directions, I can not run the error metric locally
+with a laptop of 32GB memory. It would take more than 10 hours to
+optimize 10 point direction.</li>
+        </ul>
+      </li>
+      <li>Putting more materials into the BRDF space
+        <ul>
+          <li>If we have more materials other than MERL, we can put all of them
+into the material space. Thus the reconstruction could be more
+robust as there is more liklihood for a new material to lie in the
+subspace of all known material.</li>
+        </ul>
+      </li>
+      <li>Low RMSE Wrong Rendered Image
+        <ul>
+          <li>Reconstruction having the lowest RMSE is the most different from
+the ground truth during the rendering comparison.</li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>The report could be found here <a href="/assets/docs/cp/BRDF_reconstruction_using_MERL_database.pptx">slides</a>,<a href="/assets/docs/cp/Final_project_report.pdf">pdf</a>,<a href="/assets/videos/cp/video.mp4">video</a></li>
+  <li>The source code is here <a href="https://github.com/chongchong721/cp_final_project_brdf">Github</a></li>
+</ul>
+
+<p>[1]Jannik Boll Nielsen, Henrik Wann Jensen, and Ravi Ramamoorthi. 2015. On Optimal, Minimal BRDF Sampling for Reflectance Acquisition. ACM Trans. Graph. 34, 6, Article 186 (nov 2015), 11 pages. https://doi.org/10.1145/2816795.2818085</p>
+
+<p>[2]Zexiang Xu, Jannik Boll Nielsen, Jiyang Yu, Henrik Wann Jensen, and Ravi Ramamoorthi. 2016. Minimal BRDF Sampling for Two-Shot near-Field Reflectance Acquisition. ACM Trans. Graph. 35, 6, Article 188 (dec 2016), 12 pages. https://doi.org/10.1145/2980179.2982396</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Computational Photography Final Project]]></summary></entry><entry><title type="html">Markov Chain Monte Carlo In Primary Sample Space</title><link href="https://chongchong721.github.io/2023/05/10/Markov-chain-Monte-Carlo-in-primary-sample-space.html" rel="alternate" type="text/html" title="Markov Chain Monte Carlo In Primary Sample Space" /><published>2023-05-10T00:00:00+00:00</published><updated>2023-05-10T00:00:00+00:00</updated><id>https://chongchong721.github.io/2023/05/10/Markov-chain-Monte-Carlo-in-primary-sample-space</id><content type="html" xml:base="https://chongchong721.github.io/2023/05/10/Markov-chain-Monte-Carlo-in-primary-sample-space.html"><![CDATA[<h3 id="physics-based-rendering-project">Physics-based Rendering Project</h3>
+
+<p><img src="/assets/images/pbr/drpssmlt.png" alt="" /></p>
+
+<ul>
+  <li>Markov chain Monte Carlo in primary sample space implementation.</li>
+  <li>in the course project on PBR, I have implemented primary sample space Markov chain Monte Carlo[1] and delayed rejection MLT[2].</li>
+  <li>The <a href="/assets/docs/pbr/Final_project_report.pdf">report</a> is here</li>
+  <li>The full code is not available since it contains course assignment source code which should not be publicly viewed. But part of it is here
+    <ul>
+      <li><a href="/assets/codes/pbr/sampler.h">random number generator(sampler) header</a></li>
+      <li><a href="/assets/codes/pbr/sampler.cpp">random number generator(sampler) source</a></li>
+      <li><a href="/assets/codes/pbr/path_tracer_pssmlt.h">pss applied on path tracer</a></li>
+      <li><a href="/assets/codes/pbr/path_tracer_drpssmlt.h">drpss applied on path tracer</a></li>
+    </ul>
+  </li>
+</ul>
+
+<p>[1]Csaba Kelemen, László Szirmay-Kalos, György Antal, and Ferenc Csonka. 2002. A Simple and Robust Mutation Strategy for the Metropolis Light Transport Algorithm. Computer Graphics Forum 21, 3 (2002), 531–540. https://doi.org/10.1111/1467-8659.t01-1-00703 arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/1467-8659.t01-1-00703</p>
+
+<p>[2]Damien Rioux-Lavoie, Joey Litalien, Adrien Gruson, Toshiya Hachisuka, and Derek Nowrouzezahrai. 2020. Delayed Rejection Metropolis Light Transport. ACM Trans. Graph. 39, 3, Article 26 (may 2020), 14 pages. https://doi.org/10.1145/3388538</p>]]></content><author><name></name></author><summary type="html"><![CDATA[Physics-based Rendering Project]]></summary></entry><entry><title type="html">How to build Mitsuba0.6 on Ubuntu Linux</title><link href="https://chongchong721.github.io/setup/2023/03/22/How-to-build-Mitsuba0.6-on-Ubuntu-Linux.html" rel="alternate" type="text/html" title="How to build Mitsuba0.6 on Ubuntu Linux" /><published>2023-03-22T00:00:00+00:00</published><updated>2023-03-22T00:00:00+00:00</updated><id>https://chongchong721.github.io/setup/2023/03/22/How-to-build-Mitsuba0.6-on-Ubuntu-Linux</id><content type="html" xml:base="https://chongchong721.github.io/setup/2023/03/22/How-to-build-Mitsuba0.6-on-Ubuntu-Linux.html"><![CDATA[<h4 id="building-mitsuba-06-from-source-on-ubuntu-2204">Building Mitsuba 0.6 from source on Ubuntu 22.04</h4>
+
+<ol>
+  <li>
+    <p>This is not general instructions for building Mitsuba 0.6. These steps are needed for <strong>me</strong> to build Mitsuba on 2 laptops with Pop OS 22.04(which is essentially a more user friendly Ubuntu 22.04), and these two laptops have already installed a lot of other libraries, which may cause dependency conflict and other issues. I wrote this in case I replace my old laptop with a new one.</p>
+  </li>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">git clone https://github.com/mitsuba-renderer/mitsuba.git </code></p>
+
+    <ul>
+      <li>Switch to branch scons-python3. If you’re using Python2, you can stick to main branch</li>
+    </ul>
+  </li>
+  <li>
+    <p>install C++ boost library (boost should be installed under <code class="language-plaintext highlighter-rouge">/usr/include</code> and <code class="language-plaintext highlighter-rouge">/usr/lib</code>) Make sure you don’t have multiversion of boost, which can results in link failure(Took me 5 hours to figure out). if you installed boost manually then <strong>do not</strong> <code class="language-plaintext highlighter-rouge">apt install libboost-all-dev</code> in step 3</p>
+  </li>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">sudo apt-get install build-essential scons git libpng12-dev libjpeg-dev libilmbase-dev libxerces-c-dev libboost-all-dev libopenexr-dev glew-utils libglewmx-dev libxxf86vm-dev libeigen3-dev libfftw3-dev</code></p>
+
+    <ul>
+      <li>Some libraries may be named differently in current version of Ubuntu. e.g. <code class="language-plaintext highlighter-rouge">libpng12-dev</code> is called <code class="language-plaintext highlighter-rouge">libpng-dev</code></li>
+      <li>make sure you successfully installed all the packages</li>
+    </ul>
+  </li>
+  <li>
+    <p>With GUI support, install Qt5 <code class="language-plaintext highlighter-rouge">sudo apt-get install qtbase5-dev libqt5opengl5-dev libqt5xmlpatterns5-dev</code></p>
+  </li>
+  <li>
+    <p>On Linux, we need to manually set some Qt5 path</p>
+
+    <ul>
+      <li>
+        <p>Follow <a href="https://github.com/mitsuba-renderer/mitsuba/issues/32#issuecomment-334696914">this issue</a> ,</p>
+
+        <ul>
+          <li>
+            <p>if you installed Qt5 through package manager, it should located like</p>
+
+            <p><code class="language-plaintext highlighter-rouge">QTINCLUDE      = ['/usr/include/x86_64-linux-gnu']</code>
+<code class="language-plaintext highlighter-rouge">QTDIR          = ['/usr/lib/x86_64-linux-gnu/qt5']</code></p>
+
+            <p>QTINCLUDE is the directory your Qt5 header files are located</p>
+
+            <p>QTDIR is where your Qt5 library(.so) located</p>
+          </li>
+          <li>
+            <p>the third and fourth steps might not be necessary</p>
+          </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <p>You can now try to build Mitsuba by calling scons</p>
+  </li>
+  <li>
+    <p>If you meet errors like</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>include/mitsuba/core/constants.h:58:32: error: unable to find numeric literal operator ‘operator""f’
+ #define RCPOVERFLOW_FLT   0x1p-128f
+                                ^
+</code></pre></div>    </div>
+  </li>
+</ol>
+
+<p>​		Change the c++ flag in config.py from <code class="language-plaintext highlighter-rouge">-std=c++11</code> to <code class="language-plaintext highlighter-rouge">-std=gnu++11</code></p>
+
+<ol>
+  <li>
+    <p>You might also encouter error saying</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>‘_1’ was not declared in this scope
+</code></pre></div>    </div>
+
+    <p>This is because you’re using a newer version of boost. You can include the header file</p>
+
+    <p><code class="language-plaintext highlighter-rouge">#include &lt;boost/bind.hpp&gt;</code></p>
+  </li>
+  <li>
+    <p><code class="language-plaintext highlighter-rouge">source setpath.sh</code></p>
+  </li>
+</ol>
+
+<h4 id="add-python-bindings">Add python bindings</h4>
+
+<ol>
+  <li>When installing boost, you need to specify <code class="language-plaintext highlighter-rouge">./bootstrap.sh --with-python=yourpythonexecutable</code>, this will let boost compile its Boost.python library</li>
+  <li>detect_python.py needs some modification.
+    <ol>
+      <li><del>Add our boost library path to it (I install boost at /usr/local, which the python script does not search through)</del>
+        <ul>
+          <li>After testing, you should only install your boost under /usr/include and /usr/lib, or the built python library won’t find where libboost_python is. I don’t want to change the sourcecode anymore.</li>
+        </ul>
+      </li>
+      <li>Add your python version(if your python version &gt;3.6), as they did not consider this future version when they wrote the script.</li>
+      <li>Might also need to add your python version in Sconsript.configure</li>
+    </ol>
+  </li>
+  <li>Scons use python script to run, so theoretically you can debug why it is not detecting your python.</li>
+  <li><code class="language-plaintext highlighter-rouge">setpath.sh</code> will only export PYTHON library path in current shell session. If you want to set it globally, add <code class="language-plaintext highlighter-rouge">source yourMitsubaPath/setpath.sh  </code> to your .zshrc/.bashrc. This path might be still not working in IDE, still trying to figure out how to set this in PyCharm</li>
+</ol>]]></content><author><name></name></author><category term="setup" /><summary type="html"><![CDATA[Building Mitsuba 0.6 from source on Ubuntu 22.04]]></summary></entry></feed>
